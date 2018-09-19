@@ -17,17 +17,33 @@ static bool visited(vertex_t* v)
 
 static void dfs(vertex_t* v, int* dfnum, vertex_t** vertex)
 {
-	/* MAKE COMPLETE DURING LAB 1 */
-
-	v = v;
-	dfnum = dfnum;
-	vertex = vertex;
-
 	/* succ[0] corresponds to the target of a conditional branch.
 	 * succ[0] is NULL for an unconditional branch (BA).
 	 * succ[1] corresponds to the target of an unconditional branch.
 	 *
 	 */
+
+	/* 1. assign number to self
+	 * 2. recurse left
+	 * 3. recurse right
+	 */
+
+	v->dfnum = *dfnum;  // replace -1
+	vertex[*dfnum] = v; // reorder elements.
+	// sdom is already self.
+	// ancestor is already null
+	(*dfnum)++;
+
+	for (int i=0; i<2; i++) {
+		vertex_t *w = v->succ[i];
+		if (w) {
+			int todo = !visited(w);
+			// we cannot check todo by checking sdom because they are never null.
+			if (todo) {
+				dfs(w, dfnum, vertex);
+			}
+		}
+	}
 }
 
 static void link(vertex_t* parent, vertex_t* child)
@@ -51,7 +67,7 @@ static vertex_t* eval(vertex_t* v)
 
 		v = v->ancestor;
 	}
-	
+
 	return u;
 }
 
@@ -88,9 +104,9 @@ void dominance(func_t* func)
 	list_t*		h;
 	vertex_t*	original[func->nvertex];
 
-	printf("LAB 1: Remove RETURN in \"%s\", line %d\n", 
+	/*printf("LAB 1: Remove RETURN in \"%s\", line %d\n",
 		__FILE__, 1+(int)__LINE__);
-	return;
+	return;*/
 
 	if (0) visited(NULL);	/* For silencing GCC. */
 
@@ -120,7 +136,7 @@ void dominance(func_t* func)
 	}
 
 	dfnum = 0;
-	
+
 	assert(func->vertex[0] == func->start);
 
 	dfs(func->vertex[0], &dfnum, func->vertex);
@@ -136,7 +152,7 @@ void dominance(func_t* func)
 	pr("dfnum = %d\n", dfnum);
 	pr("n     = %d\n", func->nvertex);
 	func->nvertex = dfnum;
-	
+
 	print_cfg(func);
 
 	for (i = func->nvertex - 1; i > 0; i--) {
@@ -169,7 +185,7 @@ void dominance(func_t* func)
 		pr("sdom(%d) = %d\n", w->index, w->sdom->index);
 
 		link(w->parent, w);
-	
+
 		/* Step 3. */
 		insert_first(&w->sdom->bucket, w);
 
@@ -181,7 +197,7 @@ void dominance(func_t* func)
 			continue;
 
 		do {
-		
+
 			v = p->data;
 			p = p->succ;
 			u = eval(v);
@@ -197,7 +213,7 @@ void dominance(func_t* func)
 	pr("\nstep 4\n", "");
 	for (i = 1; i < func->nvertex; i++) {
 		w = func->vertex[i];
-		
+
 		/* MAKE COMPLETE DURING LAB 1 */
 
 		pr("final idom(%d) = %d\n", w->index, w->idom->index);
