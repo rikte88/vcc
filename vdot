@@ -1,0 +1,2 @@
+dot -Gsize=9,9 -Tps $1.$2.dot > $1.ps
+ps2pdf $1.ps

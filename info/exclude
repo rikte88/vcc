@@ -1,0 +1,20 @@
+# Lines that start with '#' are comments.
+
+# Borrowed from the list of default ignores used by CVS
+*.[oa]
+*.so
+*~
+\#*
+.#*
+tags
+TAGS
+
+# For the vi lovers
+*.swp
+
+# AXIS specific ignores
+.target*
+.*_installed
+.depend
+
+# End of the system provided patterns. Add your own patterns below.

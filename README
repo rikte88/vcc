@@ -1,0 +1,5 @@
+This directory contains the source code of the VCC C compiler, which can 
+compile a small subset of C and is used as a pedagogical tool to study 
+code optimization algorithms at Lund University. 
+
+The code is Copyright Jonas Skeppstedt with all rights reserved.

@@ -1,0 +1,14 @@
+gmon.out
+*.ps
+*.pdf
+*.o
+*.c:*
+*.dot
+lex.c
+c.c
+vcc
+a.out
+trace
+out
+correct
+stats
