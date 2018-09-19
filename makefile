@@ -38,7 +38,7 @@ put.o: put.c
 
 test: $(OUT)
 	rm -f out correct $(BENCH).c:*
-	gcc -O3 -g $(BENCH).c put.c get.c 
+	gcc -O3 -g $(BENCH).c put.c get.c
 	./a.out < in > correct
 	time ./vcc -q $(BENCH).c < in
 	diff out correct | head
@@ -46,4 +46,4 @@ test: $(OUT)
 lex.c: lex.l
 
 vg: $(OUT)
-	valgrind --leak-check=full --track-origins=yes vcc -q $(BENCH).c < in
+	valgrind --leak-check=full --track-origins=yes ./vcc -q $(BENCH).c < in

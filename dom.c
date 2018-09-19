@@ -40,6 +40,7 @@ static void dfs(vertex_t* v, int* dfnum, vertex_t** vertex)
 			int todo = !visited(w);
 			// we cannot check todo by checking sdom because they are never null.
 			if (todo) {
+				w->parent = v;
 				dfs(w, dfnum, vertex);
 			}
 		}
@@ -108,13 +109,13 @@ void dominance(func_t* func)
 		__FILE__, 1+(int)__LINE__);
 	return;*/
 
-	if (0) visited(NULL);	/* For silencing GCC. */
+	//if (0) visited(NULL);	/* For silencing GCC. */
 
 	/* Construct the immediate-dominator tree. */
 
 	memcpy(original, func->vertex, sizeof original);
 
-	use_pr = false;
+	use_pr = true;
 
 	/* Step 1. */
 
@@ -180,10 +181,15 @@ void dominance(func_t* func)
 
 			/* MAKE COMPLETE DURING LAB 1 */
 
+			if (u->sdom->dfnum < w->sdom->dfnum) {
+				w->sdom = u->sdom;
+			}
+
 		} while (p != h);
 
 		pr("sdom(%d) = %d\n", w->index, w->sdom->index);
 
+		// "wrong order" link, insert_first, won't matter.
 		link(w->parent, w);
 
 		/* Step 3. */
@@ -197,10 +203,18 @@ void dominance(func_t* func)
 			continue;
 
 		do {
-
+			// we execute data in order 1,2,3
 			v = p->data;
 			p = p->succ;
 			u = eval(v);
+			// all elements removed after
+
+			// best guess idom
+			if (u->sdom->dfnum < v->sdom->dfnum) {
+				v->idom = u;
+			} else {
+				v->idom = w->parent;
+			}
 
 			/* MAKE COMPLETE DURING LAB 1 */
 
@@ -215,6 +229,17 @@ void dominance(func_t* func)
 		w = func->vertex[i];
 
 		/* MAKE COMPLETE DURING LAB 1 */
+		if (w->idom != w->sdom) {
+			w->idom = w->idom->idom;
+		}
+
+		// if we already set idom domchild, that guy is our sibling
+		// if we did not. then it is null, we will set out sibling to null, but it is already null, so noop
+
+		//if(w->idom->domchild) {
+			w->domsibling = w->idom->domchild;
+		//}
+		w->idom->domchild = w;
 
 		pr("final idom(%d) = %d\n", w->index, w->idom->index);
 	}
