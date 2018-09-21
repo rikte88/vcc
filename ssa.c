@@ -155,6 +155,7 @@ void rename_symbols(vertex_t* u)
 	stmt_t *t;
 	list_t *vars_to_pop_last = NULL;
 
+	list_t *rmlater = NULL;
 	list_t*		p = u->stmts;
 	if (p != NULL)
 	do {
@@ -178,15 +179,36 @@ void rename_symbols(vertex_t* u)
 		// this is the assignment side.
 		sym_t *V = defined_sym(t);
 		if (V != NULL) {
-			unsigned *i = &V->ssa_version;
-			op_t Vi = temp();
-			Vi.u.sym->ssa_version = *i;
-			insert_last(&vars_to_pop_last, V);
-			t->op[2] = Vi;
-			push(V->rename_stack, Vi.u.sym);
-			(*i)++;
+			if (t->type == MOV && is_var(t->op[0])) {
+				// b4 opt: 4457931
+				// after opt 4112543
+				printf("optimize!!!\n");
+				insert_last(&rmlater, t);
+				insert_last(&vars_to_pop_last, V);
+				push(V->rename_stack, t->op[0].u.sym);
+				// we get V0 V1 V2 W? V3
+			} else {
+				unsigned *i = &V->ssa_version;
+				op_t Vi = temp();
+				Vi.u.sym->ssa_version = *i;
+				insert_last(&vars_to_pop_last, V);
+				t->op[2] = Vi;
+				push(V->rename_stack, Vi.u.sym);
+				(*i)++;
+			}
 		}
 	} while (p != u->stmts);
+
+	p = rmlater;
+	if (p != NULL)
+	do {
+		stmt_t *x = p->data;
+		p = p->succ;
+		remove_from_list(&u->stmts, x);
+		free_stmt(x);
+	} while (p != rmlater);
+	free_list(&rmlater);
+
 
 	for (int i = 0; i < 2; i++) {
 		vertex_t *v = u->succ[i];
@@ -328,6 +350,8 @@ void to_ssa(func_t* func)
 	modsets(func);
 	insert_phi(func);
 	rename_symbols(func->vertex[0]);
+	// maybe fix ssa_version of originals to 0.
+	// we used it as a counter.
 
 	p = h = func->var;
 	do {
