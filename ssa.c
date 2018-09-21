@@ -31,12 +31,40 @@ static void print_index(void* vp, FILE* fp)
 
 	fprintf(fp, "%d", v->index);
 }
-	
+
 static void df(vertex_t* u)
 {
-	u = u;
-
 	/* MAKE COMPLETE DURING LAB 2. */
+	/* postorder traversal*/
+	if (u->domchild) {
+		df(u->domchild);
+	}
+	if (u->domsibling) {
+		df(u->domsibling);
+	}
+
+	u->df = NULL;
+
+	for (int i = 0; i < 2; i++) {
+		vertex_t *v = u->succ[i];
+		if (v != NULL && v->idom != u) {
+			join_set(&u->df, v);
+		}
+	}
+
+	vertex_t *w = u->domchild;
+	while (w != NULL) {
+		size_t	n;
+		vertex_t **a = set_to_array(w->df, &n);
+		for (int i = 0; i < n; i++) {
+			vertex_t *v = a[i]; //use a[i] here
+			if (v->idom != u) {
+				join_set(&u->df, v);
+			}
+		}
+		free(a);
+		w = w->domsibling;
+	}
 }
 
 void modsets(func_t* func)
@@ -99,9 +127,9 @@ unsigned which_pred(vertex_t* pred, vertex_t* vertex)
 	list_t*		p;
 
 	i = 0;
-	
+
 	h = p = vertex->pred;
-	
+
 	assert(p != NULL);
 
 	do {
@@ -121,11 +149,75 @@ unsigned which_pred(vertex_t* pred, vertex_t* vertex)
 	return 0;
 }
 
-void rename_symbols(vertex_t* x)
+void rename_symbols(vertex_t* u)
 {
-	x = x;
-	
 	/* MAKE COMPLETE DURING LAB 2. */
+	stmt_t *t;
+	list_t *vars_to_pop_last = NULL;
+
+	list_t*		p = u->stmts;
+	if (p != NULL)
+	do {
+		t = p->data;
+		p = p->succ;
+
+
+		// "foreach vairable V in RHS"
+		// this is the calculation side
+		for (int i = 0; i < 2; i++) {
+			if (is_var(t->op[i])) {
+				sym_t *V = t->op[i].u.sym;
+				// efter här: foreach V
+				assert(V);
+				sym_t *Vi = top(V->rename_stack);
+				t->op[i].u.sym = Vi;
+			}
+		}
+
+		// "foreach vairable V in LHS"
+		// this is the assignment side.
+		sym_t *V = defined_sym(t);
+		if (V != NULL) {
+			unsigned *i = &V->ssa_version;
+			op_t Vi = temp();
+			Vi.u.sym->ssa_version = *i;
+			insert_last(&vars_to_pop_last, V);
+			t->op[2] = Vi;
+			push(V->rename_stack, Vi.u.sym);
+			(*i)++;
+		}
+	} while (p != u->stmts);
+
+	for (int i = 0; i < 2; i++) {
+		vertex_t *v = u->succ[i];
+		if (!v) continue;
+		unsigned j = which_pred(u, v); // correct order verified
+		p = v->phi_func_list;
+		if (p)
+		do {
+			phi_t *phi = p->data; //verified type
+			p = p->succ;
+			assert(is_var(phi->rhs[j]));
+			sym_t *V = phi->rhs[j].u.sym;
+			phi->rhs[j].u.sym = top(V->rename_stack);
+
+		} while(p!=v->phi_func_list);
+	}
+
+	vertex_t *v = u->domchild;
+	while (v != NULL) {
+		rename_symbols(v);
+		v = v->domsibling;
+	}
+
+	p = vars_to_pop_last;
+	if (p != NULL)
+	do {
+		sym_t *x = p->data;
+		p = p->succ;
+		pop(x->rename_stack);
+	} while (p != vars_to_pop_last);
+	free_list(&vars_to_pop_last);
 }
 
 void insert_phi(func_t* func)
@@ -148,7 +240,7 @@ void insert_phi(func_t* func)
 	if (func->var == NULL)
 		return;
 
-	for (i = 0; i < func->nvertex; i += 1) 
+	for (i = 0; i < func->nvertex; i += 1)
 		func->vertex[i]->work = func->vertex[i]->already = 0;
 
 	p = h = func->var;
@@ -156,7 +248,7 @@ void insert_phi(func_t* func)
 	worklist = NULL;
 
 	do {
-	
+
 		sym = p->data;
 		p = p->succ;
 		iter += 1;
@@ -214,26 +306,27 @@ void to_ssa(func_t* func)
 	list_t*		p;
 	list_t*		h;
 
-	printf("LAB 2: Remove RETURN in \"%s\", line %d\n", 
+	/*printf("LAB 2: Remove RETURN in \"%s\", line %d\n",
 		__FILE__, 1+(int)__LINE__);
-	return;
+	return;*/
 
 	if (func->var == NULL)
 		return;
 
-	df(func->vertex[0]); 
+	df(func->vertex[0]);
+	printf("done with df\n");
 
 	p = h = func->var;
 	do {
 		sym = p->data;
 		p = p->succ;
-		join_set(&sym->modset, func->vertex[0]); 
+		join_set(&sym->modset, func->vertex[0]);
 		sym->rename_stack = new_stack();
 		push(sym->rename_stack, sym);
 	} while (p != h);
 
 	modsets(func);
-	insert_phi(func); 
+	insert_phi(func);
 	rename_symbols(func->vertex[0]);
 
 	p = h = func->var;
@@ -256,7 +349,7 @@ static void fix_move(phi_t* phi, list_t** moves)
 
 	phi_dest = phi->stmt->op[2].u.sym;
 	phi->stmt->op[2].u.sym = t.u.sym;
-	
+
 	/* Save the real destination operand of the PHI function in
 	 * move->op[1] and also tell the move which PHI this was.
 	 */
@@ -265,7 +358,7 @@ static void fix_move(phi_t* phi, list_t** moves)
 	move->op[1] = new_sym_op(phi_dest);
 	move->phi = phi;
 
-	/* This move will be put after all the normal moves inserted by 
+	/* This move will be put after all the normal moves inserted by
 	 * from_ssa.
 	 */
 	insert_last(moves, move);
@@ -345,7 +438,7 @@ static void insert_move_before_branch(vertex_t* w, stmt_t* move)
 	assert(move->op[1].type != NO_OP);
 
 	/* Now restore the PHI function so that it has the correct
-	 * destination operand. 
+	 * destination operand.
 	 */
 
 	move->phi->stmt->op[2] = move->op[1];
@@ -385,9 +478,10 @@ void from_ssa(func_t* func)
 	list_t*		p;
 	list_t*		more_moves;
 
-	printf("LAB 2: Remove RETURN in \"%s\", line %d\n", 
+
+	/*printf("LAB 2: Remove RETURN in \"%s\", line %d\n",
 		__FILE__, 1+(int)__LINE__);
-	return;
+	return;*/
 
 	for (i = 1; i < func->nvertex; i += 1) {
 		x = func->vertex[i];
@@ -418,9 +512,9 @@ void from_ssa(func_t* func)
 
 				if (stmt->type == PHI) {
 					phi = stmt->phi;
-					insert_move(pred, phi, k, q, 
+					insert_move(pred, phi, k, q,
 						&more_moves);
-				} 
+				}
 
 				q = q->succ;
 				stmt = q->data;

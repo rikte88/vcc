@@ -19,7 +19,7 @@ void print_op(op_t op, FILE* fp, int xwidth)
 		break;
 
 	case REG_OP:
-		fprintf(fp, "r%-*d", xwidth-1, op.u.reg); 
+		fprintf(fp, "r%-*d", xwidth-1, op.u.reg);
 		break;
 
 	case NUM_OP:
@@ -48,7 +48,7 @@ int op_repr(op_t op)
 		fatal(op.type);
 	}
 }
-	
+
 void set_op_def(op_t op, stmt_t* stmt)
 {
 	if (op.type == SYM_OP)
@@ -60,7 +60,7 @@ stmt_t* op_def(op_t op)
 	assert(op.type == SYM_OP);
 	return op.u.sym->def;
 }
-	
+
 int op_addr(op_t op)
 {
 	if (op.type == SYM_OP)
@@ -85,16 +85,16 @@ op_t new_op(op_type_t type, ...)
 	case NUM_OP:
 		op.u.num = va_arg(ap, int);
 		break;
-		
+
 	case REG_OP:
 		op.u.reg = va_arg(ap, int);
 		break;
-		
+
 	case SYM_OP:
 		op.u.sym = va_arg(ap, sym_t*);
 		break;
 	}
-		
+
 	va_end(ap);
 
 	return op;
@@ -115,23 +115,28 @@ bool is_sym(op_t op)
 	return op.type == SYM_OP;
 }
 
+bool is_var(op_t op)
+{
+	return op.type == SYM_OP && !op.u.sym->islabel;
+}
+
 bool is_label(op_t op)
 {
 	return op.type == SYM_OP && op.u.sym->islabel;
 }
 
 op_t new_sym_op(sym_t* sym)
-{	
+{
 	return new_op(SYM_OP, sym);
 }
 
 op_t new_num_op(int num)
-{	
+{
 	return new_op(NUM_OP, num);
 }
 
 op_t new_reg_op(int reg)
-{	
+{
 	return new_op(REG_OP, reg);
 }
 

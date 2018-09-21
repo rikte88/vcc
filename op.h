@@ -36,6 +36,7 @@ bool is_num(op_t);
 bool is_sym(op_t);
 bool is_reg(op_t);
 bool is_label(op_t);
+bool is_var(op_t op);
 
 stmt_t* op_def(op_t);
 void set_op_def(op_t op, stmt_t* stmt);
